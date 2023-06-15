@@ -7,9 +7,9 @@ from crawl.crawler import CrawlWebsite
 from fastapi import APIRouter, Depends, Request, UploadFile
 from models.users import User
 from parsers.github import process_github
+from utils.common import CommonsDep
 from utils.file import convert_bytes
 from utils.processors import filter_file
-from utils.vectors import CommonsDep
 
 crawl_router = APIRouter()
 

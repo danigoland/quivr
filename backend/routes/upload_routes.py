@@ -3,9 +3,9 @@ import os
 from auth.auth_bearer import AuthBearer, get_current_user
 from fastapi import APIRouter, Depends, Request, UploadFile
 from models.users import User
+from utils.common import CommonsDep
 from utils.file import convert_bytes, get_file_size
 from utils.processors import filter_file
-from utils.vectors import CommonsDep
 
 upload_router = APIRouter()
 
