@@ -1,6 +1,21 @@
 version: "3"
 
 services:
+  traefik:
+    image: "traefik:v2.10"
+    container_name: "traefik"
+    command:
+      #- "--log.level=DEBUG"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+
   frontend:
     env_file:
       - ./frontend/.env
@@ -11,6 +26,11 @@ services:
     restart: always
     ports:
       - 3000:3000
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=Host(`quivr.photoshield-staging.internal`) && PathPrefix(`/`)"
+      - "traefik.http.routers.frontend.entrypoints=web"
   backend:
     env_file:
       - ./backend/.env
@@ -24,3 +44,10 @@ services:
       - ~/.config/gcloud:/root/.config/gcloud
     ports:
       - 5050:5050
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend.rule=Host(`quivr.photoshield-staging.internal`) && PathPrefix(`/api/`)"
+      - "traefik.http.middlewares.backend.stripprefix.prefixes=/api"
+      - "traefik.http.routers.backend.middlewares=backend@docker"
+      - "traefik.http.routers.backend.entrypoints=web"
