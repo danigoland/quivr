@@ -1,0 +1,27 @@
+version: "3"
+
+services:
+  frontend:
+    env_file:
+      - ./frontend/.env
+    build:
+      context: frontend
+      dockerfile: Dockerfile
+    container_name: web
+    restart: always
+    ports:
+      - 3000:3000
+
+  backend:
+    env_file:
+      - ./backend/.env
+    build:
+      context: backend
+      dockerfile: Dockerfile
+    container_name: backend
+    restart: always
+    volumes:
+      - ./backend/:/code/
+      - ~/.config/gcloud:/root/.config/gcloud
+    ports:
+      - 5050:5050

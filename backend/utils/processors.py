@@ -14,6 +14,7 @@ from parsers.odt import process_odt
 from parsers.pdf import process_pdf
 from parsers.powerpoint import process_powerpoint
 from parsers.txt import process_txt
+from parsers.python import process_py
 
 from supabase import Client
 
@@ -36,6 +37,7 @@ file_processors = {
     ".odt": process_odt,
     ".epub": process_epub,
     ".ipynb": process_ipnyb,
+    ".py" : process_py
 }
 
 
