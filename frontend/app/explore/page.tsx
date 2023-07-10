@@ -3,45 +3,20 @@
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { useEffect, useState } from "react";
 
 import Button from "@/lib/components/ui/Button";
 import Spinner from "@/lib/components/ui/Spinner";
-import { Document } from "@/lib/types/Document";
-import { useAxios } from "@/lib/useAxios";
+import { useSupabase } from "@/lib/context/SupabaseProvider";
 
-import { useSupabase } from "../supabase-provider";
 import DocumentItem from "./DocumentItem";
+import { useExplore } from "./hooks/useExplore";
 
 const ExplorePage = (): JSX.Element => {
-  const [documents, setDocuments] = useState<Document[]>([]);
-  const [isPending, setIsPending] = useState(true);
   const { session } = useSupabase();
-  const { axiosInstance } = useAxios();
-
+  const { documents, setDocuments, isPending } = useExplore();
   if (session === null) {
     redirect("/login");
   }
-
-  useEffect(() => {
-    const fetchDocuments = async () => {
-      setIsPending(true);
-      try {
-        console.log(
-          `Fetching documents from ${process.env.NEXT_PUBLIC_BACKEND_URL}/explore`
-        );
-        const response = await axiosInstance.get<{ documents: Document[] }>(
-          "/explore"
-        );
-        setDocuments(response.data.documents);
-      } catch (error) {
-        console.error("Error fetching documents", error);
-        setDocuments([]);
-      }
-      setIsPending(false);
-    };
-    fetchDocuments();
-  }, [session.access_token, axiosInstance]);
 
   return (
     <main>

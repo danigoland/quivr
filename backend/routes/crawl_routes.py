@@ -1,61 +1,84 @@
 import os
 import shutil
 from tempfile import SpooledTemporaryFile
+from uuid import UUID
 
-from auth.auth_bearer import AuthBearer, get_current_user
+from auth import AuthBearer, get_current_user
 from crawl.crawler import CrawlWebsite
-from fastapi import APIRouter, Depends, Request, UploadFile
+from fastapi import APIRouter, Depends, Query, Request, UploadFile
+from models.brains import Brain
+from models.files import File
+from models.settings import common_dependencies
 from models.users import User
 from parsers.github import process_github
 from utils.file import convert_bytes
 from utils.processors import filter_file
-from utils.vectors import CommonsDep
 
 crawl_router = APIRouter()
 
-def get_unique_user_data(commons, user):
-    """
-    Retrieve unique user data vectors.
-    """
-    user_vectors_response = commons['supabase'].table("vectors").select(
-        "name:metadata->>file_name, size:metadata->>file_size", count="exact") \
-            .filter("user_id", "eq", user.email)\
-            .execute()
-    documents = user_vectors_response.data  # Access the data from the response
-    # Convert each dictionary to a tuple of items, then to a set to remove duplicates, and then back to a dictionary
-    user_unique_vectors = [dict(t) for t in set(tuple(d.items()) for d in documents)]
-    return user_unique_vectors
 
-@crawl_router.post("/crawl/", dependencies=[Depends(AuthBearer())], tags=["Crawl"])
-async def crawl_endpoint(request: Request,commons: CommonsDep, crawl_website: CrawlWebsite, enable_summarization: bool = False, current_user: User = Depends(get_current_user)):
+@crawl_router.post("/crawl", dependencies=[Depends(AuthBearer())], tags=["Crawl"])
+async def crawl_endpoint(
+    request: Request,
+    crawl_website: CrawlWebsite,
+    brain_id: UUID = Query(..., description="The ID of the brain"),
+    enable_summarization: bool = False,
+    current_user: User = Depends(get_current_user),
+):
     """
     Crawl a website and process the crawled data.
     """
-    max_brain_size = os.getenv("MAX_BRAIN_SIZE")
-    if request.headers.get('Openai-Api-Key'):
-        max_brain_size = os.getenv("MAX_BRAIN_SIZE_WITH_KEY",209715200)
 
-    user_unique_vectors = get_unique_user_data(commons, current_user)
+    # [TODO] check if the user is the owner/editor of the brain
+    brain = Brain(id=brain_id)
 
-    current_brain_size = sum(float(doc['size']) for doc in user_unique_vectors)
+    commons = common_dependencies()
+
+    if request.headers.get("Openai-Api-Key"):
+        brain.max_brain_size = os.getenv(
+            "MAX_BRAIN_SIZE_WITH_KEY", 209715200
+        )  # pyright: ignore reportPrivateUsage=none
 
     file_size = 1000000
-    remaining_free_space =  float(max_brain_size) - (current_brain_size)
+    remaining_free_space = brain.remaining_brain_size
 
     if remaining_free_space - file_size < 0:
-        message = {"message": f"❌ User's brain will exceed maximum capacity with this upload. Maximum file allowed is : {convert_bytes(remaining_free_space)}", "type": "error"}
-    else: 
+        message = {
+            "message": f"❌ User's brain will exceed maximum capacity with this upload. Maximum file allowed is : {convert_bytes(remaining_free_space)}",
+            "type": "error",
+        }
+    else:
         if not crawl_website.checkGithub():
-            file_path, file_name = crawl_website.process()
+            (
+                file_path,
+                file_name,
+            ) = crawl_website.process()  # pyright: ignore reportPrivateUsage=none
             # Create a SpooledTemporaryFile from the file_path
             spooled_file = SpooledTemporaryFile()
-            with open(file_path, 'rb') as f:
+            with open(file_path, "rb") as f:
                 shutil.copyfileobj(f, spooled_file)
 
             # Pass the SpooledTemporaryFile to UploadFile
-            file = UploadFile(file=spooled_file, filename=file_name)
-            message = await filter_file(file, enable_summarization, commons['supabase'], user=current_user, openai_api_key=request.headers.get('Openai-Api-Key', None))
+            uploadFile = UploadFile(
+                file=spooled_file,  # pyright: ignore reportPrivateUsage=none
+                filename=file_name,
+            )
+            file = File(file=uploadFile)
+            #  check remaining free space here !!
+            message = await filter_file(
+                commons,
+                file,
+                enable_summarization,
+                brain.id,
+                openai_api_key=request.headers.get("Openai-Api-Key", None),
+            )
             return message
         else:
-            message = await process_github(crawl_website.url, "false", user=current_user, supabase=commons['supabase'], user_openai_api_key=request.headers.get('Openai-Api-Key', None))
-    return message
+            #  check remaining free space here !!
+            message = await process_github(
+                commons,
+                crawl_website.url,
+                "false",
+                brain_id,
+                user_openai_api_key=request.headers.get("Openai-Api-Key", None),
+            )

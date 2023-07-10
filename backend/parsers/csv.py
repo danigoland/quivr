@@ -1,8 +1,22 @@
-from fastapi import UploadFile
-from langchain.document_loaders.csv_loader import CSVLoader
+from langchain.document_loaders import CSVLoader
+from models.files import File
+from models.settings import CommonsDep
 
 from .common import process_file
 
 
-def process_csv(file: UploadFile, enable_summarization, user, user_openai_api_key):
-    return process_file(file, CSVLoader, ".csv", enable_summarization, user, user_openai_api_key)
+def process_csv(
+    commons: CommonsDep,
+    file: File,
+    enable_summarization,
+    brain_id,
+    user_openai_api_key,
+):
+    return process_file(
+        commons,
+        file,
+        CSVLoader,
+        enable_summarization,
+        brain_id,
+        user_openai_api_key,
+    )

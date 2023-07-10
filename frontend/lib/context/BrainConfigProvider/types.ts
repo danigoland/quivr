@@ -12,7 +12,7 @@ export type BrainConfig = {
 
 type OptionalConfig = { [K in keyof BrainConfig]?: BrainConfig[K] | undefined };
 
-export type ConfigContext = {
+export type BrainConfigContextType = {
   config: BrainConfig;
   updateConfig: (config: OptionalConfig) => void;
   resetConfig: () => void;
@@ -21,12 +21,10 @@ export type ConfigContext = {
 // export const openAiModels = ["gpt-3.5-turbo", "gpt-4"] as const; ## TODO activate GPT4 when not in demo mode
 
 export const openAiModels = [
-  "gpt-3.5-turbo",
   "gpt-3.5-turbo-0613",
   "gpt-3.5-turbo-16k",
 ] as const;
 export const openAiPaidModels = [
-  "gpt-3.5-turbo",
   "gpt-3.5-turbo-0613",
   "gpt-3.5-turbo-16k",
   "gpt-4",
@@ -40,7 +38,9 @@ export const anthropicModels = [
   // "claude-instant-v1.1-100k",
 ] as const;
 
-export const googleModels = ["vertexai"] as const; // TODO activate when not in demo mode
+export const googleModels = [
+  //"vertexai"
+] as const; // TODO activate when not in demo mode
 
 // export const googleModels = [] as const;
 export const models = [

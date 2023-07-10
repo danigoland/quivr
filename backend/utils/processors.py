@@ -1,9 +1,7 @@
-import os
-
-from fastapi import Depends, FastAPI, UploadFile
-from models.users import User
+from models.brains import Brain
+from models.files import File
+from models.settings import CommonsDep
 from parsers.audio import process_audio
-from parsers.common import file_already_exists
 from parsers.csv import process_csv
 from parsers.docx import process_docx
 from parsers.epub import process_epub
@@ -15,8 +13,6 @@ from parsers.pdf import process_pdf
 from parsers.powerpoint import process_powerpoint
 from parsers.txt import process_txt
 from parsers.python import process_py
-
-from supabase import Client
 
 file_processors = {
     ".txt": process_txt,
@@ -41,18 +37,58 @@ file_processors = {
 }
 
 
+def create_response(message, type):
+    return {"message": message, "type": type}
 
 
-async def filter_file(file: UploadFile, enable_summarization: bool, supabase_client: Client, user: User, openai_api_key):
-    if await file_already_exists(supabase_client, file, user):
-        return {"message": f"🤔 {file.filename} already exists.", "type": "warning"}
-    elif file.file._file.tell()  < 1:
-        return {"message": f"❌ {file.filename} is empty.", "type": "error"}
-    else:
-        file_extension = os.path.splitext(file.filename)[-1].lower()  # Convert file extension to lowercase
-        if file_extension in file_processors:
-            await file_processors[file_extension](file, enable_summarization, user ,openai_api_key )
-            return {"message": f"✅ {file.filename} has been uploaded.", "type": "success"}
-        else:
-            return {"message": f"❌ {file.filename} is not supported.", "type": "error"}
+async def filter_file(
+    commons: CommonsDep,
+    file: File,
+    enable_summarization: bool,
+    brain_id,
+    openai_api_key,
+):
+    await file.compute_file_sha1()
 
+    print("file sha1", file.file_sha1)
+    file_exists = file.file_already_exists()
+    file_exists_in_brain = file.file_already_exists_in_brain(brain_id)
+
+    if file_exists_in_brain:
+        return create_response(
+            f"🤔 {file.file.filename} already exists in brain {brain_id}.",  # pyright: ignore reportPrivateUsage=none
+            "warning",
+        )
+    elif file.file_is_empty():
+        return create_response(
+            f"❌ {file.file.filename} is empty.",  # pyright: ignore reportPrivateUsage=none
+            "error",  # pyright: ignore reportPrivateUsage=none
+        )
+    elif file_exists:
+        file.link_file_to_brain(brain=Brain(id=brain_id))
+        return create_response(
+            f"✅ {file.file.filename} has been uploaded to brain {brain_id}.",  # pyright: ignore reportPrivateUsage=none
+            "success",
+        )
+
+    if file.file_extension in file_processors:
+        try:
+            await file_processors[file.file_extension](
+                commons, file, enable_summarization, brain_id, openai_api_key
+            )
+            return create_response(
+                f"✅ {file.file.filename} has been uploaded to brain {brain_id}.",  # pyright: ignore reportPrivateUsage=none
+                "success",
+            )
+        except Exception as e:
+            # Add more specific exceptions as needed.
+            print(f"Error processing file: {e}")
+            return create_response(
+                f"⚠️ An error occurred while processing {file.file.filename}.",  # pyright: ignore reportPrivateUsage=none
+                "error",
+            )
+
+    return create_response(
+        f"❌ {file.file.filename} is not supported.",  # pyright: ignore reportPrivateUsage=none
+        "error",
+    )

@@ -1,9 +1,10 @@
 /* eslint-disable */
 import { useEffect, useState } from "react";
 
-import { useAxios } from "@/lib/useAxios";
+import { useAxios } from "@/lib/hooks";
 
-import { useSupabase } from "../../supabase-provider";
+import { useEventTracking } from "@/services/analytics/useEventTracking";
+import { useSupabase } from "../../../lib/context/SupabaseProvider";
 
 interface DocumentDataProps {
   documentName: string;
@@ -16,6 +17,7 @@ type DocumentDetails = any;
 const DocumentData = ({ documentName }: DocumentDataProps): JSX.Element => {
   const { session } = useSupabase();
   const { axiosInstance } = useAxios();
+  const { track } = useEventTracking();
 
   const [documents, setDocuments] = useState<DocumentDetails[]>([]);
 
@@ -25,8 +27,9 @@ const DocumentData = ({ documentName }: DocumentDataProps): JSX.Element => {
 
   useEffect(() => {
     const fetchDocuments = async () => {
+      void track("GET_DOCUMENT_DETAILS");
       const res = await axiosInstance.get<{ documents: DocumentDetails[] }>(
-        `/explore/${documentName}`
+        `/explore/${documentName}/`
       );
       setDocuments(res.data.documents);
     };

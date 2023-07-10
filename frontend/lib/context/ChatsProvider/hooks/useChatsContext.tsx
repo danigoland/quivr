@@ -1,9 +1,9 @@
-/* eslint-disable */
 import { useContext } from "react";
 
 import { ChatsContext } from "../chats-provider";
 
-const useChatsContext = () => {
+// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+export const useChatsContext = () => {
   const context = useContext(ChatsContext);
 
   if (context === undefined) {
@@ -12,5 +12,3 @@ const useChatsContext = () => {
 
   return context;
 };
-
-export default useChatsContext;
