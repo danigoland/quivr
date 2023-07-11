@@ -13,6 +13,7 @@ from parsers.pdf import process_pdf
 from parsers.powerpoint import process_powerpoint
 from parsers.txt import process_txt
 from parsers.python import process_py
+from parsers.json import process_json
 
 file_processors = {
     ".txt": process_txt,
@@ -33,7 +34,8 @@ file_processors = {
     ".odt": process_odt,
     ".epub": process_epub,
     ".ipynb": process_ipnyb,
-    ".py" : process_py
+    ".py": process_py,
+    ".json": process_json
 }
 
 
